@@ -1,6 +1,6 @@
 package com.deepblue.rescue;
 
-import com.deepblue.rescue.domain.RescueCenter;
+import com.deepblue.rescue.domain.*;
 import com.deepblue.rescue.repository.AnimalRepository;
 import com.deepblue.rescue.repository.ExpertiseRepository;
 import com.deepblue.rescue.repository.RescueCaseRepository;
@@ -16,11 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+import com.deepblue.rescue.domain.Animal;
+import com.deepblue.rescue.domain.AnimalSex;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import com.deepblue.rescue.domain.RescueCase;
-import com.deepblue.rescue.domain.RescueCenter;
-import com.deepblue.rescue.domain.RescueStatus;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -62,9 +61,10 @@ class PersistenceIntegrationTest {
     @Test
     void shouldHaveFlywayMigrationsApplied() {
 
-        var versions  = jdbcTemplate.queryForList(
+        var versions = jdbcTemplate.queryForList(
                 """
-                SELECT version 
+                
+                        SELECT version 
                 FROM flyway_schema_history
                 WHERE version IN ('1', '2')
                 ORDER BY version
@@ -101,7 +101,7 @@ class PersistenceIntegrationTest {
                 .isTrue();
 
         assertThat(rescueCenterRepository.count())
-                .isEqualTo(1);
+                .isEqualTo(1l);
     }
     @Test
     void shouldPersistRescueCasesBelongingToRescueCenter() {
@@ -147,5 +147,70 @@ class PersistenceIntegrationTest {
 
         assertThat(case2.getRescueCenter())
                 .isSameAs(savedCenter);
+    }
+    @Test
+    void shouldPersistAnimalLinkedToRescueCase() {
+        RescueCenter center = new RescueCenter(
+                "DB-CAR",
+                "DeepBlue Caribbean Center",
+                "Santa Marta"
+        );
+        RescueCenter savedCenter = rescueCenterRepository.save(center);
+
+        RescueCase rescueCase = new RescueCase(
+                "RES-2026-001",
+                LocalDate.of(2026, 1, 25),
+                "Playa Blanca",
+                RescueStatus.ADMITTED
+        );
+
+        savedCenter.addCase(rescueCase);
+        rescueCaseRepository.save(rescueCase);
+
+        Animal animal = new Animal();
+        animal.setAnimalCode("AN-2026-001");
+        animal.setCommonName("Green Sea Turtle");
+        animal.setScientificName("Chelonia mydas");
+        animal.setSex(AnimalSex.FEMALE);
+        rescueCase.assignAnimal(animal);
+
+        Animal savedAnimal = animalRepository.save(animal);
+
+        assertThat(savedAnimal.getId()).isNotNull();
+
+        assertThat(savedAnimal.getRescueCase()).isNotNull();
+        assertThat(savedAnimal.getRescueCase().getCaseCode())
+                .isEqualTo("RES-2026-001");
+
+        assertThat(rescueCase.getAnimal()).isSameAs(savedAnimal);
+    }
+    @Test
+    void specialistShouldHaveTwoExpertiseAreas() {
+
+        Expertise trauma = expertiseRepository
+                .findByNameIgnoreCase("Trauma")
+                .orElseThrow();
+
+        Expertise rehabilitation = expertiseRepository
+                .findByNameIgnoreCase("Rehabilitation")
+                .orElseThrow();
+
+        Specialist specialist = new Specialist();
+        specialist.setProfessionalCode("SP-2026-001");
+        specialist.setFirstName("Elena");
+        specialist.setLastName("Vargas");
+        specialist.setEmail("elena.vargas@deepblue.com");
+        specialist.setActive(true);
+
+        specialist.addExpertise(trauma);
+        specialist.addExpertise(rehabilitation);
+
+        Specialist savedSpecialist =
+                specialistRepository.save(specialist);
+
+        assertThat(savedSpecialist.getId()).isNotNull();
+
+        assertThat(savedSpecialist.getExpertiseAreas())
+                .hasSize(2);
     }
 }

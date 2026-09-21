@@ -11,5 +11,4 @@ class DeepblueRescueApplicationTests {
 	@Test
 	void contextLoads() {
 	}
-
 }
