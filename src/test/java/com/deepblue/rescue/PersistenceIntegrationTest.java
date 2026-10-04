@@ -65,12 +65,12 @@ class PersistenceIntegrationTest {
 
         var versions = jdbcTemplate.queryForList(
                 """
-                
-                        SELECT version 
-                FROM flyway_schema_history
-                WHERE version IN ('1', '2')
-                ORDER BY version
-                """,
+                        
+                                SELECT version 
+                        FROM flyway_schema_history
+                        WHERE version IN ('1', '2')
+                        ORDER BY version
+                        """,
                 String.class
         );
 
@@ -78,6 +78,7 @@ class PersistenceIntegrationTest {
 
         assertThat(versions).contains("1", "2");
     }
+
     @Test
     void shouldPersistAndFindRescueCenter() {
         RescueCenter center = new RescueCenter(
@@ -105,6 +106,7 @@ class PersistenceIntegrationTest {
         assertThat(rescueCenterRepository.count())
                 .isEqualTo(1l);
     }
+
     @Test
     void shouldPersistRescueCasesBelongingToRescueCenter() {
         RescueCenter center = new RescueCenter(
@@ -150,6 +152,7 @@ class PersistenceIntegrationTest {
         assertThat(case2.getRescueCenter())
                 .isSameAs(savedCenter);
     }
+
     @Test
     void shouldPersistAnimalLinkedToRescueCase() {
         RescueCenter center = new RescueCenter(
@@ -186,6 +189,7 @@ class PersistenceIntegrationTest {
 
         assertThat(rescueCase.getAnimal()).isSameAs(savedAnimal);
     }
+
     @Test
     void specialistShouldHaveTwoExpertiseAreas() {
 
@@ -215,6 +219,7 @@ class PersistenceIntegrationTest {
         assertThat(savedSpecialist.getExpertiseAreas())
                 .hasSize(2);
     }
+
     @Test
     void shouldPersistAnimalWithMedicalRecord() {
         RescueCenter center = new RescueCenter(
@@ -267,6 +272,7 @@ class PersistenceIntegrationTest {
         assertThat(savedAnimal.getMedicalRecord().getAnimal())
                 .isSameAs(savedAnimal);
     }
+
     @Test
     void shouldFindRescueCasesByStatus() {
         RescueCenter center = new RescueCenter(
@@ -316,6 +322,7 @@ class PersistenceIntegrationTest {
                 .extracting(RescueCase::getCaseCode)
                 .containsExactly("RES-001", "RES-003");
     }
+
     @Test
     void shouldFindAnimalsByRescueCenterCode() {
         RescueCenter caribbean = new RescueCenter(
@@ -377,6 +384,7 @@ class PersistenceIntegrationTest {
         assertThat(results.get(0).getAnimalCode())
                 .isEqualTo("AN-CAR-001");
     }
+
     @Test
     void shouldFindActiveSpecialistsByExpertise() {
         Expertise trauma = expertiseRepository
@@ -433,6 +441,7 @@ class PersistenceIntegrationTest {
                 .extracting(Specialist::getFirstName)
                 .containsExactlyInAnyOrder("Elena", "Sofia");
     }
+
     @Test
     void shouldPersistTreatmentsForAnimal() {
         RescueCenter center = new RescueCenter(
@@ -505,6 +514,7 @@ class PersistenceIntegrationTest {
         assertThat(saved2.getId()).isNotNull();
         assertThat(saved3.getId()).isNotNull();
     }
+
     @Test
     void shouldFindTreatmentsByAnimalChronologically() {
         RescueCenter center = new RescueCenter(
@@ -576,6 +586,7 @@ class PersistenceIntegrationTest {
                         TreatmentType.HYDRATION
                 );
     }
+
     @Test
     void shouldFindTreatmentsBetweenDates() {
         RescueCenter center = new RescueCenter(
@@ -650,6 +661,7 @@ class PersistenceIntegrationTest {
         assertThat(results.get(0).getType())
                 .isEqualTo(TreatmentType.HYDRATION);
     }
+
     @Test
     void shouldRejectDuplicateAnimalCode() {
         RescueCenter center = new RescueCenter(
@@ -686,20 +698,21 @@ class PersistenceIntegrationTest {
         assertThatThrownBy(() -> animalRepository.saveAndFlush(secondAnimal))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
+
     @Test
     void shouldRejectInvalidForeignKey() {
         assertThatThrownBy(() ->
                 jdbcTemplate.update(
                         """
-                        INSERT INTO animals (
-                            animal_code,
-                            common_name,
-                            scientific_name,
-                            sex,
-                            rescue_case_id
-                        )
-                        VALUES (?, ?, ?, ?, ?)
-                        """,
+                                INSERT INTO animals (
+                                    animal_code,
+                                    common_name,
+                                    scientific_name,
+                                    sex,
+                                    rescue_case_id
+                                )
+                                VALUES (?, ?, ?, ?, ?)
+                                """,
                         "AN-FK-001",
                         "Green Sea Turtle",
                         "Chelonia mydas",
@@ -708,6 +721,7 @@ class PersistenceIntegrationTest {
                 )
         ).isInstanceOf(DataIntegrityViolationException.class);
     }
+
     @Test
     void shouldPersistIntegratorScenario() {
         RescueCenter center = rescueCenterRepository.save(
@@ -758,8 +772,8 @@ class PersistenceIntegrationTest {
         specialist.addExpertise(marineReptiles);
         specialist.addExpertise(trauma);
         specialist.addExpertise(rehabilitation);
-        rescueCase.assignAnimal(animal);
 
+        rescueCase.assignAnimal(animal);
         animal.assignMedicalRecord(medicalRecord);
 
         rescueCaseRepository.save(rescueCase);
@@ -781,11 +795,71 @@ class PersistenceIntegrationTest {
 
         treatmentRepository.saveAll(List.of(treatment1, treatment2));
 
+        // Consulta 1: ¿Existe el caso RES-2026-100?
         assertThat(rescueCenterRepository.findByCode("DB-CAR")).isPresent();
         assertThat(rescueCaseRepository.findByCaseCode("RES-2026-100")).isPresent();
-        assertThat(animalRepository.findByAnimalCode("AN-2026-100")).isPresent();
-        assertThat(treatmentRepository.findByAnimalIdOrderByPerformedAtAsc(animal.getId()))
-                .hasSize(2);
-    }
 
+        // Consulta 2: Casos IN_REHABILITATION
+        List<RescueCase> rehabilitationCases =
+                rescueCaseRepository.findByStatusOrderByRescueDateAsc(
+                        RescueStatus.IN_REHABILITATION);
+
+        assertThat(rehabilitationCases).isNotEmpty();
+
+        // Consulta 3: Animales pertenecientes al centro DB-CAR
+        List<Animal> centerAnimals =
+                animalRepository.findByRescueCaseRescueCenterCode("DB-CAR");
+
+        assertThat(centerAnimals).isNotEmpty();
+
+        // Consulta 4: Animales cuyo nombre común contiene "turtle"
+        List<Animal> turtles =
+                animalRepository.findByCommonNameContainingIgnoreCase("turtle");
+
+        assertThat(turtles).isNotEmpty();
+
+        // Consulta 5: Especialistas activos con expertise Trauma
+        List<Specialist> traumaSpecialists =
+                specialistRepository.findActiveByExpertise("Trauma");
+
+        assertThat(traumaSpecialists).isNotEmpty();
+
+        // Consulta 6: Todos los tratamientos de AN-2026-100 en orden cronológico
+        List<Treatment> animalTreatments =
+                treatmentRepository.findByAnimalIdOrderByPerformedAtAsc(animal.getId());
+
+        assertThat(animalTreatments)
+                .hasSize(2)
+                .extracting(Treatment::getPerformedAt)
+                .containsExactly(
+                        LocalDateTime.of(2026, 8, 19, 10, 0),
+                        LocalDateTime.of(2026, 8, 20, 10, 0)
+                );
+
+        // Consulta 7: Tratamientos realizados por especialistas con expertise Rehabilitation
+        List<Treatment> rehabilitationTreatments =
+                treatmentRepository.findBySpecialistExpertise("Rehabilitation");
+
+        assertThat(rehabilitationTreatments).hasSize(2);
+
+        // Consulta 8: Tratamientos entre dos fechas
+        List<Treatment> treatmentsBetween =
+                treatmentRepository.findTreatmentsBetween(
+                        LocalDateTime.of(2026, 8, 19, 0, 0),
+                        LocalDateTime.of(2026, 8, 20, 23, 59)
+                );
+
+        assertThat(treatmentsBetween).hasSize(2);
+
+        // Reto: animales en rehabilitación con tratamiento de especialista Trauma
+        List<Animal> traumaRehabilitationAnimals =
+                animalRepository.findAnimalsWithTreatmentBySpecialistExpertise(
+                        RescueStatus.IN_REHABILITATION,
+                        "Trauma"
+                );
+
+        assertThat(traumaRehabilitationAnimals)
+                .extracting(Animal::getAnimalCode)
+                .contains("AN-2026-100");
+    }
 }

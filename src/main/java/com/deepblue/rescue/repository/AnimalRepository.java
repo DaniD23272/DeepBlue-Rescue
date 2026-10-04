@@ -3,6 +3,8 @@ package com.deepblue.rescue.repository;
 import com.deepblue.rescue.domain.Animal;
 import com.deepblue.rescue.domain.RescueStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,4 +19,17 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 
     List<Animal> findByRescueCaseRescueCenterCode(String centerCode);
 
+    @Query("""
+            select distinct a
+            from Animal a
+            join a.rescueCase rc
+            join Treatment t on t.animal = a
+            join t.specialist s
+            join s.expertiseAreas e
+            where rc.status = :status
+              and lower(e.name) = lower(:expertise)
+            """)
+    List<Animal> findAnimalsWithTreatmentBySpecialistExpertise(
+            @Param("status") RescueStatus status,
+            @Param("expertise") String expertise);
 }
