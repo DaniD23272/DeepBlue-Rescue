@@ -15,6 +15,9 @@ public class Animal {
     @Column(name = "animal_code", nullable = false, unique = true)
     private String animalCode;
 
+    @Column(name = "tracking_device_code", unique = true)
+    private String trackingDeviceCode;
+
     @Column(name = "common_name", nullable = false)
     private String commonName;
 
@@ -46,6 +49,9 @@ public class Animal {
 
     public String getAnimalCode() { return animalCode; }
     public void setAnimalCode(String animalCode) { this.animalCode = animalCode; }
+
+    public String getTrackingDeviceCode() { return trackingDeviceCode; }
+    public void setTrackingDeviceCode(String trackingDeviceCode) {this.trackingDeviceCode = trackingDeviceCode; }
 
     public String getCommonName() { return commonName; }
     public void setCommonName(String commonName) { this.commonName = commonName; }
